@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MotoRush 3D — 复古街机伪 3D 摩托极速狂飙 | xiaoA0v0</title>
+  <meta name="description" content="纯前端 HTML5 Canvas 伪 3D 街机摩托车竞速游戏：弯道起伏坡道、真实压弯倾角、6 速波箱与 Web Audio 四缸声浪、氮气加速、近距离擦车连击与三条特色赛道。" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <!-- 顶部精简栏 -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="badge">🏍️</span>
+        <div>
+          <h1>MotoRush <span class="accent">3D</span></h1>
+          <p class="sub">HTML5 Canvas 伪 3D 街机摩托极速狂飙 · Web Audio 实时声浪</p>
+        </div>
+      </div>
+      <div class="top-btns">
+        <button id="btn-sound" class="pill-btn">🔊 声浪: 开</button>
+        <button id="btn-pause" class="pill-btn hidden">⏸ 暂停</button>
+        <a class="pill-btn gh" href="https://github.com/xiaoA0v0/MotoRush-3D" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </header>
+
+    <!-- 游戏主舞台 -->
+    <main class="stage-wrap">
+      <div class="canvas-frame" id="canvas-frame">
+        <canvas id="game-canvas" width="1120" height="630"></canvas>
+
+        <!-- 实时游戏内 HUD 覆盖层 -->
+        <div id="hud" class="hud hidden">
+          <div class="hud-top">
+            <div class="hud-box">
+              <span class="hud-lbl">SCORE 得分</span>
+              <strong id="hud-score" class="mono">0</strong>
+            </div>
+            <div class="hud-box timer-box">
+              <span class="hud-lbl">TIME 剩余时间</span>
+              <strong id="hud-time" class="mono accent">45.0</strong>
+            </div>
+            <div class="hud-box">
+              <span class="hud-lbl">DIST 里程</span>
+              <strong id="hud-dist" class="mono">0.00 km</strong>
+            </div>
+            <div class="hud-box">
+              <span class="hud-lbl">BEST 最高分</span>
+              <strong id="hud-best" class="mono amber">0</strong>
+            </div>
+          </div>
+
+          <!-- 居中动态提示（检查点加时 / 擦车连击 / 断油换挡） -->
+          <div id="banner-msg" class="banner-msg hidden"></div>
+
+          <!-- 左下氮气槽 + 右下摩托液晶仪表盘 -->
+          <div class="hud-bottom">
+            <div class="nitro-panel">
+              <div class="nitro-head">
+                <span>⚡ NOS 氮气加速 (<kbd>Space</kbd>)</span>
+                <strong id="hud-nitro-pct" class="mono">100%</strong>
+              </div>
+              <div class="nitro-track">
+                <div id="hud-nitro-fill" class="nitro-fill" style="width: 100%;"></div>
+              </div>
+              <div id="hud-combo" class="combo-badge hidden">🔥 贴身擦车 x2</div>
+            </div>
+
+            <div class="dash-cluster">
+              <div class="rpm-strip" id="hud-rpm-strip"></div>
+              <div class="dash-main">
+                <div class="gear-box">
+                  <span class="hud-lbl">GEAR</span>
+                  <strong id="hud-gear" class="mono">1</strong>
+                </div>
+                <div class="speed-box">
+                  <strong id="hud-speed" class="mono">0</strong>
+                  <span>km/h</span>
+                </div>
+                <div class="rpm-num">
+                  <span class="hud-lbl">RPM</span>
+                  <strong id="hud-rpm" class="mono">1400</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 开始界面 / 选赛道覆盖层 -->
+        <div id="overlay-start" class="overlay">
+          <div class="modal">
+            <div class="modal-badge">ARCADE SUPERBIKE ENGINE</div>
+            <h2>MotoRush <span class="accent">3D</span></h2>
+            <p class="modal-desc">纯 HTML5 Canvas 伪 3D 公路引擎 + Web Audio 四缸声浪合成。躲避车流、贴身擦车攒氮气、冲过检查点挑战 320 km/h 极速！</p>
+
+            <div class="track-grid" id="track-grid">
+              <button class="track-card active" data-track="wangan">
+                <div class="track-icon">🌃</div>
+                <strong>东京湾岸午夜</strong>
+                <span>霓虹高架 · 高速大弯 · 车流密集</span>
+              </button>
+              <button class="track-card" data-track="sunset">
+                <div class="track-icon">🌅</div>
+                <strong>太平洋日落海岸</strong>
+                <span>橘红夕阳 · 棕榈海景 · 极速畅跑</span>
+              </button>
+              <button class="track-card" data-track="touge">
+                <div class="track-icon">⛰️</div>
+                <strong>秋名山午夜山道</strong>
+                <span>起伏陡坡 · 连续发卡弯 · 高难压弯</span>
+              </button>
+            </div>
+
+            <div class="controls-strip">
+              <span><kbd>W</kbd>/<kbd>↑</kbd> 油门</span>
+              <span><kbd>S</kbd>/<kbd>↓</kbd> 刹车</span>
+              <span><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> 压弯变道</span>
+              <span><kbd>Space</kbd> 氮气喷射</span>
+              <span><kbd>P</kbd> 暂停</span>
+            </div>
+
+            <button id="btn-start" class="btn-primary">🔥 点火出发 (START RACE)</button>
+          </div>
+        </div>
+
+        <!-- 暂停界面 -->
+        <div id="overlay-pause" class="overlay hidden">
+          <div class="modal compact">
+            <h2>⏸ 比赛暂停</h2>
+            <p class="modal-desc">按 <kbd>P</kbd> 或点击下方按钮继续狂飙</p>
+            <div class="modal-actions">
+              <button id="btn-resume" class="btn-primary">▶ 继续比赛</button>
+              <button id="btn-quit" class="btn-secondary">🏁 返回选赛道</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 结算界面 -->
+        <div id="overlay-gameover" class="overlay hidden">
+          <div class="modal compact">
+            <div class="modal-badge warn">TIME UP · 本局完赛</div>
+            <h2 id="go-title">🏁 极速结算</h2>
+            <div class="result-grid">
+              <div><span>最终得分</span><strong id="go-score" class="mono accent">0</strong></div>
+              <div><span>行驶里程</span><strong id="go-dist" class="mono">0.00 km</strong></div>
+              <div><span>最高极速</span><strong id="go-topspd" class="mono green">0 km/h</strong></div>
+              <div><span>贴身擦车</span><strong id="go-nearmiss" class="mono amber">0 次</strong></div>
+            </div>
+            <p id="go-record" class="record-tip hidden">🏆 恭喜刷新本赛道历史最高分纪录！</p>
+            <div class="modal-actions">
+              <button id="btn-retry" class="btn-primary">🔥 再来一局</button>
+              <button id="btn-menu" class="btn-secondary">🗺️ 更换赛道</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 触屏/移动端虚拟按键（窄屏自动显示） -->
+      <div class="touch-pad" id="touch-pad">
+        <div class="touch-left">
+          <button class="touch-btn" data-key="left">◀ 左压弯</button>
+          <button class="touch-btn" data-key="right">右压弯 ▶</button>
+        </div>
+        <div class="touch-right">
+          <button class="touch-btn brake" data-key="down">刹车</button>
+          <button class="touch-btn nitro" data-key="nitro">⚡ NOS</button>
+          <button class="touch-btn gas" data-key="up">🔥 油门</button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>Built with ❤️ by <a href="https://github.com/xiaoA0v0" target="_blank" rel="noopener">xiaoA0v0 (fanzhenwei)</a> · 零依赖纯 HTML5 Canvas 伪 3D 引擎</span>
+      <span>提示：贴身擦车超车可触发连击加分并快速补充 NOS 氮气 ⚡</span>
+    </footer>
+  </div>
+
+  <script src="./audio.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
